@@ -1,0 +1,1245 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EventState {
+  DRAFT
+  CONFIGURING
+  REGISTRATION_OPEN
+  READY
+  LOCKED
+  LIVE
+  PAUSED
+  RESULTS_REVIEW
+  FINALIZED
+  ARCHIVED
+  CANCELLED
+}
+
+enum ActivityVersionState {
+  DRAFT
+  READY
+  PUBLISHED
+  SUPERSEDED
+  RETIRED
+}
+
+enum ActivityRunState {
+  CREATED
+  ELIGIBLE
+  IN_PROGRESS
+  PAUSED
+  SUBMITTED
+  PENDING_VERIFICATION
+  COMPLETED
+  FINALIZED
+  FAILED
+  SKIPPED
+  CANCELLED
+  VOID
+}
+
+enum SubmissionStatus {
+  RECEIVED
+  VALIDATING
+  ACCEPTED
+  REJECTED
+  NEEDS_REVIEW
+  SUPERSEDED
+  VOID
+}
+
+enum ParticipationEntryKind {
+  TEAM
+  INDIVIDUAL
+  PAIR
+  SUBGROUP
+  AD_HOC
+}
+
+enum ScoreEntryType {
+  DERIVED
+  PLACEMENT
+  BONUS
+  PENALTY
+  MANUAL
+  OVERRIDE_DELTA
+  REVERSAL
+}
+
+enum ResultSnapshotState {
+  PROVISIONAL
+  FINAL
+  VOID
+}
+
+enum StationState {
+  DRAFT
+  READY
+  OPEN
+  PAUSED
+  CLOSED
+  DISABLED
+}
+
+enum StationVisitState {
+  EXPECTED
+  QUEUED
+  CALLED
+  ARRIVED
+  ACTIVE
+  COMPLETED
+  SKIPPED
+  NO_SHOW
+  REROUTED
+  CANCELLED
+}
+
+enum CompetitionState {
+  DRAFT
+  SEEDED
+  LIVE
+  REVIEW
+  COMPLETE
+  FINALIZED
+  ARCHIVED
+}
+
+enum MatchState {
+  SCHEDULED
+  READY
+  LIVE
+  PENDING_RESULT
+  DISPUTED
+  FINAL
+  BYE
+  WALKOVER
+  CANCELLED
+  VOID
+}
+
+enum ActorType {
+  USER
+  PARTICIPANT_SESSION
+  SYSTEM
+  IMPORT
+  JOB
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  LIVE
+  RETRACTED
+  EXPIRED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+}
+
+enum MediaModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum SecurityIncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SecurityIncidentStatus {
+  OPEN
+  CONTAINED
+  RESOLVED
+  CLOSED
+}
+
+enum PrivacyAssessmentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REASSESSMENT_REQUIRED
+  RETIRED
+}
+
+enum DataSubjectRequestType {
+  ACCESS
+  RECTIFICATION
+  ERASURE
+  RESTRICTION
+  OBJECTION
+  PORTABILITY
+  OTHER
+}
+
+enum DataSubjectRequestStatus {
+  RECEIVED
+  VERIFYING
+  IN_REVIEW
+  FULFILLED
+  DENIED
+  CLOSED
+}
+
+enum BackupRunStatus {
+  STARTED
+  SUCCESS
+  FAILED
+  VERIFIED
+}
+
+enum ExportJobStatus {
+  REQUESTED
+  RUNNING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  people Person[]
+  events Event[]
+  audits AuditLog[]
+  activityTemplates ActivityTemplate[]
+  privacyNotices PrivacyNotice[]
+  privacyImpactAssessments PrivacyImpactAssessment[]
+  processingRecords DataProcessingRecord[]
+  dataSubjectRequests DataSubjectRequest[]
+  securityIncidents SecurityIncident[]
+  backupRuns BackupRun[]
+  rateLimitBuckets RateLimitBucket[]
+  exportJobs ExportJob[]
+}
+
+model UserAccount {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash         String
+  platformCapabilities String[] @default([])
+  createdAt            DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  disabledAt   DateTime?
+
+  sessions        AuthSession[]
+  personLinks     PersonAccountLink[]
+  roleAssignments EventRoleAssignment[]
+  stationAssignments StationStaffAssignment[]
+  audits          AuditLog[]
+}
+
+model AuthSession {
+  id            String   @id @default(cuid())
+  userAccountId String
+  tokenHash     String   @unique
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userAccountId, expiresAt])
+}
+
+model Person {
+  id             String   @id @default(cuid())
+  organizationId String
+  displayName    String
+  externalKey    String?
+  metadataJson   Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  archivedAt     DateTime?
+
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  accounts       PersonAccountLink[]
+  participations EventParticipant[]
+  dataSubjectRequests DataSubjectRequest[]
+
+  @@unique([organizationId, externalKey])
+  @@index([organizationId, displayName])
+}
+
+model PersonAccountLink {
+  personId      String
+  userAccountId String
+  verifiedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  person      Person      @relation(fields: [personId], references: [id])
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id])
+
+  @@id([personId, userAccountId])
+  @@unique([userAccountId])
+}
+
+model Event {
+  id               String     @id @default(cuid())
+  organizationId   String
+  name             String
+  shortName        String?
+  slug             String     @unique
+  timezone         String
+  state            EventState @default(DRAFT)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  configJson       Json
+  brandingJson     Json?
+  currentSnapshotId String?
+  privacyNoticeId  String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  archivedAt       DateTime?
+
+  organization        Organization          @relation(fields: [organizationId], references: [id])
+  participants        EventParticipant[]
+  teams               Team[]
+  activities          ActivityInstance[]
+  stations            Station[]
+  routes              RoutePlan[]
+  competitions        Competition[]
+  leaderboards        LeaderboardDefinition[]
+  stationVisits       StationVisit[]
+  checkpointCredentials CheckpointCredential[]
+  announcements       EventAnnouncement[]
+  operationReceipts   OperationalReceipt[]
+  randomizationRecords RandomizationRecord[]
+  snapshots           EventSnapshot[]
+  roles               EventRole[]
+  audits              AuditLog[]
+  participationEntries ParticipationEntry[]
+  scores              ScoreEntry[]
+  participantSessions ParticipantSession[]
+  runs                ActivityRun[]
+  domainEvents        DomainEvent[]
+  mediaAssets         MediaAsset[]
+  privacyNotice       PrivacyNotice? @relation(fields: [privacyNoticeId], references: [id])
+  privacyAssessments  PrivacyImpactAssessment[]
+  dataSubjectRequests DataSubjectRequest[]
+  securityIncidents   SecurityIncident[]
+  exportJobs          ExportJob[]
+
+  @@index([organizationId, state])
+}
+
+model EventSnapshot {
+  id            String   @id @default(cuid())
+  eventId       String
+  sequence      Int
+  snapshotJson  Json
+  checksum      String
+  reason        String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, sequence])
+  @@unique([eventId, checksum])
+}
+
+model EventParticipant {
+  id           String   @id @default(cuid())
+  eventId      String
+  personId     String
+  displayName  String?
+  status       String   @default("ACTIVE")
+  metadataJson Json?
+  joinedAt     DateTime?
+  checkedInAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  event            Event                      @relation(fields: [eventId], references: [id])
+  person           Person                     @relation(fields: [personId], references: [id])
+  teamMemberships  TeamMembership[]
+  entryMemberships ParticipationEntryMember[]
+
+  @@unique([eventId, personId])
+  @@index([eventId, status])
+}
+
+model Team {
+  id             String   @id @default(cuid())
+  eventId        String
+  machineKey     String
+  name           String
+  abbreviation   String?
+  colorToken     String?
+  logoAssetId    String?
+  accessCodeHash String?
+  status         String   @default("ACTIVE")
+  metadataJson   Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  event               Event                @relation(fields: [eventId], references: [id])
+  memberships         TeamMembership[]
+  participationEntries ParticipationEntry[]
+  participantSessions ParticipantSession[]
+  routeAssignments    TeamRouteAssignment[]
+
+  @@unique([eventId, machineKey])
+  @@index([eventId, status])
+}
+
+model TeamMembership {
+  id                 String   @id @default(cuid())
+  teamId             String
+  eventParticipantId String
+  roleKey            String?
+  status             String   @default("ACTIVE")
+  joinedAt           DateTime @default(now())
+  leftAt             DateTime?
+
+  team        Team             @relation(fields: [teamId], references: [id])
+  participant EventParticipant @relation(fields: [eventParticipantId], references: [id])
+
+  @@unique([teamId, eventParticipantId])
+  @@index([eventParticipantId])
+}
+
+model ParticipantSession {
+  id        String   @id @default(cuid())
+  eventId   String
+  teamId    String?
+  tokenHash String   @unique
+  label     String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  team        Team?        @relation(fields: [teamId], references: [id])
+  mediaAssets MediaAsset[]
+
+  @@index([eventId, expiresAt])
+}
+
+model EventRole {
+  id              String   @id @default(cuid())
+  eventId         String
+  name            String
+  machineKey      String
+  capabilities    String[]
+  constraintsJson Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event       Event                 @relation(fields: [eventId], references: [id])
+  assignments EventRoleAssignment[]
+
+  @@unique([eventId, machineKey])
+}
+
+model EventRoleAssignment {
+  id            String   @id @default(cuid())
+  eventRoleId   String
+  userAccountId String
+  createdAt     DateTime @default(now())
+
+  role EventRole   @relation(fields: [eventRoleId], references: [id])
+  user UserAccount @relation(fields: [userAccountId], references: [id])
+
+  @@unique([eventRoleId, userAccountId])
+  @@index([userAccountId])
+}
+
+model Station {
+  id          String       @id @default(cuid())
+  eventId     String
+  machineKey  String
+  name        String
+  status      StationState @default(DRAFT)
+  capacity    Int?
+  configJson  Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  event               Event                       @relation(fields: [eventId], references: [id])
+  activityAssignments StationActivityAssignment[]
+  routeSteps          RouteStep[]
+  visits              StationVisit[]
+  checkpointCredentials CheckpointCredential[]
+  staffAssignments    StationStaffAssignment[]
+
+  @@unique([eventId, machineKey])
+  @@index([eventId, status])
+}
+
+model StationActivityAssignment {
+  id                 String @id @default(cuid())
+  stationId          String
+  activityInstanceId String
+  sortOrder          Int    @default(0)
+  configJson         Json?
+
+  station  Station          @relation(fields: [stationId], references: [id])
+  activity ActivityInstance @relation(fields: [activityInstanceId], references: [id])
+
+  @@unique([stationId, activityInstanceId])
+  @@index([activityInstanceId])
+}
+
+model RoutePlan {
+  id         String   @id @default(cuid())
+  eventId    String
+  machineKey String
+  name       String
+  mode       String
+  configJson Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  event       Event                 @relation(fields: [eventId], references: [id])
+  steps       RouteStep[]
+  assignments TeamRouteAssignment[]
+
+  @@unique([eventId, machineKey])
+}
+
+model RouteStep {
+  id                 String  @id @default(cuid())
+  routePlanId        String
+  sequence           Int
+  stationId          String?
+  activityInstanceId String?
+  configJson         Json?
+
+  routePlan RoutePlan         @relation(fields: [routePlanId], references: [id])
+  station   Station?          @relation(fields: [stationId], references: [id])
+  activity  ActivityInstance? @relation(fields: [activityInstanceId], references: [id])
+  visits    StationVisit[]
+  unlockOverrides RouteUnlockOverride[]
+
+  @@unique([routePlanId, sequence])
+  @@index([stationId])
+  @@index([activityInstanceId])
+}
+
+model TeamRouteAssignment {
+  id           String   @id @default(cuid())
+  teamId       String
+  routePlanId  String
+  snapshotJson Json?
+  active       Boolean  @default(true)
+  assignedAt   DateTime @default(now())
+  endedAt      DateTime?
+
+  team      Team      @relation(fields: [teamId], references: [id])
+  routePlan RoutePlan @relation(fields: [routePlanId], references: [id])
+  unlockOverrides RouteUnlockOverride[]
+
+  @@index([teamId, active, assignedAt])
+  @@index([routePlanId, active])
+}
+
+model StationVisit {
+  id                   String            @id @default(cuid())
+  eventId              String
+  stationId            String
+  participationEntryId String
+  routeStepId           String?
+  state                StationVisitState @default(EXPECTED)
+  queuePosition        Int?
+  checkInKey           String?            @unique
+  checkedInAt          DateTime?
+  calledAt             DateTime?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  skippedAt            DateTime?
+  reroutedAt           DateTime?
+  metadataJson         Json?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  event              Event              @relation(fields: [eventId], references: [id])
+  station            Station            @relation(fields: [stationId], references: [id])
+  participationEntry ParticipationEntry @relation(fields: [participationEntryId], references: [id])
+  routeStep          RouteStep?         @relation(fields: [routeStepId], references: [id])
+
+  @@index([stationId, state, createdAt])
+  @@index([participationEntryId, state])
+  @@index([routeStepId, state])
+}
+
+model CheckpointCredential {
+  id          String   @id @default(cuid())
+  eventId     String
+  stationId   String
+  nonce       String   @unique
+  label       String?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  event   Event   @relation(fields: [eventId], references: [id])
+  station Station @relation(fields: [stationId], references: [id])
+
+  @@index([stationId, revokedAt, expiresAt])
+  @@index([eventId, createdAt])
+}
+
+model StationStaffAssignment {
+  id            String   @id @default(cuid())
+  stationId     String
+  userAccountId String
+  roleKey       String   @default("marshal")
+  active        Boolean  @default(true)
+  assignedAt    DateTime @default(now())
+  endedAt       DateTime?
+
+  station Station     @relation(fields: [stationId], references: [id])
+  user    UserAccount @relation(fields: [userAccountId], references: [id])
+
+  @@unique([stationId, userAccountId, roleKey])
+  @@index([userAccountId, active])
+}
+
+model RouteUnlockOverride {
+  id                    String   @id @default(cuid())
+  teamRouteAssignmentId String
+  routeStepId           String
+  unlocked              Boolean
+  reason                String
+  actorUserId           String?
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+
+  assignment TeamRouteAssignment @relation(fields: [teamRouteAssignmentId], references: [id])
+  routeStep  RouteStep           @relation(fields: [routeStepId], references: [id])
+
+  @@unique([teamRouteAssignmentId, routeStepId])
+  @@index([routeStepId, unlocked])
+}
+
+model EventAnnouncement {
+  id            String             @id @default(cuid())
+  eventId       String
+  status        AnnouncementStatus @default(LIVE)
+  audienceKind  String             @default("ALL")
+  audienceRefId String?
+  title         String?
+  message       String
+  startsAt      DateTime           @default(now())
+  expiresAt     DateTime?
+  createdById   String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([eventId, status, startsAt])
+  @@index([eventId, audienceKind, audienceRefId])
+}
+
+model OperationalReceipt {
+  id             String   @id @default(cuid())
+  eventId        String
+  idempotencyKey String
+  operationType  String
+  targetType     String
+  targetId       String
+  resultJson     Json?
+  createdAt      DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, idempotencyKey])
+  @@index([eventId, operationType, createdAt])
+}
+
+model Competition {
+  id                 String           @id @default(cuid())
+  eventId            String
+  activityInstanceId String?
+  machineKey         String
+  name               String
+  formatKey          String
+  configJson         Json?
+  state              CompetitionState @default(DRAFT)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  event    Event             @relation(fields: [eventId], references: [id])
+  activity ActivityInstance? @relation(fields: [activityInstanceId], references: [id])
+  matches  Match[]
+
+  @@unique([eventId, machineKey])
+  @@index([eventId, state])
+}
+
+model Match {
+  id            String     @id @default(cuid())
+  competitionId String
+  roundKey      String
+  sequence      Int
+  state         MatchState @default(SCHEDULED)
+  resultJson    Json?
+  scheduledAt   DateTime?
+  startedAt     DateTime?
+  finalizedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  competition Competition @relation(fields: [competitionId], references: [id])
+  sides       MatchSide[]
+
+  @@unique([competitionId, roundKey, sequence])
+  @@index([competitionId, state])
+}
+
+model MatchSide {
+  id                   String @id @default(cuid())
+  matchId              String
+  participationEntryId String
+  sideKey              String
+  seed                  Int?
+  metadataJson          Json?
+  resultJson            Json?
+  placement             Int?
+  isWinner              Boolean?
+
+  match              Match              @relation(fields: [matchId], references: [id])
+  participationEntry ParticipationEntry @relation(fields: [participationEntryId], references: [id])
+
+  @@unique([matchId, sideKey])
+  @@unique([matchId, participationEntryId])
+}
+
+model LeaderboardDefinition {
+  id          String   @id @default(cuid())
+  eventId     String
+  machineKey  String
+  name        String
+  configJson  Json
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event       Event                 @relation(fields: [eventId], references: [id])
+  snapshots   LeaderboardSnapshot[]
+
+  @@unique([eventId, machineKey])
+  @@index([eventId, status])
+}
+
+model LeaderboardSnapshot {
+  id                      String              @id @default(cuid())
+  leaderboardDefinitionId String
+  revision                Int
+  state                   ResultSnapshotState @default(PROVISIONAL)
+  standingsJson           Json
+  inputHash               String
+  reason                  String?
+  createdById             String?
+  createdAt               DateTime            @default(now())
+
+  leaderboard LeaderboardDefinition @relation(fields: [leaderboardDefinitionId], references: [id])
+
+  @@unique([leaderboardDefinitionId, revision])
+  @@index([leaderboardDefinitionId, state, createdAt])
+}
+
+model RandomizationRecord {
+  id          String   @id @default(cuid())
+  eventId     String
+  purpose     String
+  seed        String
+  inputHash   String
+  outputJson  Json
+  createdAt   DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([eventId, purpose, createdAt])
+}
+
+model ActivityInstance {
+  id               String   @id @default(cuid())
+  eventId          String
+  machineKey       String
+  title            String
+  status           String   @default("ACTIVE")
+  sourceTemplateId String?
+  currentVersionId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  event    Event                       @relation(fields: [eventId], references: [id])
+  sourceTemplate ActivityTemplate?      @relation(fields: [sourceTemplateId], references: [id])
+  versions           ActivityDefinitionVersion[]
+  runs               ActivityRun[]
+  scores             ScoreEntry[]
+  stationAssignments StationActivityAssignment[]
+  routeSteps         RouteStep[]
+  competitions       Competition[]
+
+  @@unique([eventId, machineKey])
+  @@index([eventId, status])
+}
+
+model ActivityDefinitionVersion {
+  id                 String               @id @default(cuid())
+  activityInstanceId String
+  version            Int
+  state              ActivityVersionState @default(DRAFT)
+  schemaVersion      Int
+  definitionJson     Json
+  checksum           String
+  publishedAt        DateTime?
+  createdById        String?
+  createdAt          DateTime             @default(now())
+
+  activityInstance ActivityInstance @relation(fields: [activityInstanceId], references: [id])
+  runs             ActivityRun[]
+
+  @@unique([activityInstanceId, version])
+  @@unique([activityInstanceId, checksum])
+  @@index([activityInstanceId, state])
+}
+
+model ParticipationEntry {
+  id           String                 @id @default(cuid())
+  eventId      String
+  kind         ParticipationEntryKind
+  teamId       String?
+  label        String?
+  metadataJson Json?
+  createdAt    DateTime               @default(now())
+
+  event   Event                      @relation(fields: [eventId], references: [id])
+  team    Team?                      @relation(fields: [teamId], references: [id])
+  members ParticipationEntryMember[]
+  runs          ActivityRun[]
+  scores        ScoreEntry[]
+  stationVisits StationVisit[]
+  matchSides    MatchSide[]
+
+  @@index([eventId, kind])
+  @@index([teamId])
+}
+
+model ParticipationEntryMember {
+  id                 String @id @default(cuid())
+  entryId            String
+  eventParticipantId String
+  roleKey            String?
+
+  entry       ParticipationEntry @relation(fields: [entryId], references: [id])
+  participant EventParticipant   @relation(fields: [eventParticipantId], references: [id])
+
+  @@unique([entryId, eventParticipantId])
+}
+
+model ActivityRun {
+  id                          String           @id @default(cuid())
+  eventId                     String
+  activityInstanceId          String
+  activityDefinitionVersionId String
+  participationEntryId        String
+  attemptNo                   Int              @default(1)
+  roundKey                    String           @default("default")
+  state                       ActivityRunState @default(CREATED)
+  generatedContentJson        Json?
+  startedAt                   DateTime?
+  submittedAt                 DateTime?
+  completedAt                 DateTime?
+  finalizedAt                 DateTime?
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  event             Event                     @relation(fields: [eventId], references: [id])
+  activityInstance  ActivityInstance          @relation(fields: [activityInstanceId], references: [id])
+  definitionVersion ActivityDefinitionVersion @relation(fields: [activityDefinitionVersionId], references: [id])
+  participationEntry ParticipationEntry       @relation(fields: [participationEntryId], references: [id])
+  submissions       Submission[]
+  metrics           MetricObservation[]
+  scores            ScoreEntry[]
+  mediaAssets       MediaAsset[]
+
+  @@unique([activityInstanceId, participationEntryId, attemptNo, roundKey])
+  @@index([eventId, state])
+  @@index([activityInstanceId, state])
+}
+
+model Submission {
+  id             String           @id @default(cuid())
+  activityRunId  String
+  blockId        String
+  idempotencyKey String
+  status         SubmissionStatus @default(RECEIVED)
+  payloadJson    Json
+  validationJson Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  run ActivityRun @relation(fields: [activityRunId], references: [id])
+
+  @@unique([activityRunId, idempotencyKey])
+  @@index([activityRunId, blockId])
+}
+
+model MetricObservation {
+  id            String   @id @default(cuid())
+  activityRunId String
+  metricKey     String
+  valueJson     Json
+  source        String
+  supersedesId  String?
+  recordedById  String?
+  recordedAt    DateTime @default(now())
+
+  run ActivityRun @relation(fields: [activityRunId], references: [id])
+
+  @@index([activityRunId, metricKey])
+}
+
+model ScoreEntry {
+  id                    String         @id @default(cuid())
+  eventId               String
+  participationEntryId  String
+  activityInstanceId    String?
+  activityRunId         String?
+  dimensionKey          String
+  amount                Decimal        @db.Decimal(14, 4)
+  entryType             ScoreEntryType
+  provenanceJson        Json?
+  reason                String?
+  actorUserId           String?
+  reversalOfId          String?
+  idempotencyKey        String?        @unique
+  createdAt             DateTime       @default(now())
+
+  event              Event               @relation(fields: [eventId], references: [id])
+  participationEntry ParticipationEntry  @relation(fields: [participationEntryId], references: [id])
+  activityInstance   ActivityInstance?   @relation(fields: [activityInstanceId], references: [id])
+  activityRun        ActivityRun?        @relation(fields: [activityRunId], references: [id])
+
+  @@index([eventId, participationEntryId, dimensionKey])
+  @@index([activityRunId])
+}
+
+model MediaAsset {
+  id                   String                  @id @default(cuid())
+  eventId              String
+  activityRunId        String?
+  participantSessionId String?
+  blockId              String?
+  kind                 MediaKind
+  mimeType             String
+  originalName         String?
+  byteSize             Int
+  sha256               String
+  data                 Bytes
+  moderationStatus     MediaModerationStatus @default(PENDING)
+  metadataJson         Json?
+  createdAt            DateTime               @default(now())
+  moderatedAt          DateTime?
+  moderatedById        String?
+
+  event              Event               @relation(fields: [eventId], references: [id])
+  activityRun        ActivityRun?        @relation(fields: [activityRunId], references: [id])
+  participantSession ParticipantSession? @relation(fields: [participantSessionId], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([activityRunId, blockId])
+  @@index([moderationStatus, createdAt])
+}
+
+model ActivityTemplate {
+  id              String   @id @default(cuid())
+  organizationId  String
+  machineKey      String
+  name            String
+  description     String?
+  categoryKey     String?
+  tags            String[] @default([])
+  isSystem        Boolean  @default(false)
+  status          String   @default("ACTIVE")
+  currentVersionId String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  versions ActivityTemplateVersion[]
+  activities ActivityInstance[]
+
+  @@unique([organizationId, machineKey])
+  @@index([organizationId, status])
+}
+
+model ActivityTemplateVersion {
+  id          String               @id @default(cuid())
+  templateId  String
+  version     Int
+  state       ActivityVersionState @default(DRAFT)
+  schemaVersion Int
+  definitionJson Json
+  checksum    String
+  publishedAt DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  template ActivityTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@unique([templateId, checksum])
+  @@index([templateId, state])
+}
+
+model PrivacyNotice {
+  id             String   @id @default(cuid())
+  organizationId String
+  version        Int
+  title          String
+  content        String
+  checksum       String
+  effectiveAt    DateTime?
+  publishedAt    DateTime?
+  retiredAt      DateTime?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  events Event[]
+
+  @@unique([organizationId, version])
+  @@index([organizationId, publishedAt])
+}
+
+model PrivacyImpactAssessment {
+  id              String                  @id @default(cuid())
+  organizationId  String
+  eventId         String?
+  systemName      String
+  purpose         String
+  status          PrivacyAssessmentStatus @default(DRAFT)
+  riskLevel       String
+  scopeJson       Json
+  dataInventoryJson Json
+  riskAssessmentJson Json
+  safeguardsJson  Json
+  reviewDueAt     DateTime?
+  approvedAt      DateTime?
+  approvedById    String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+  processingRecords DataProcessingRecord[]
+
+  @@index([organizationId, status])
+  @@index([eventId, status])
+}
+
+model DataProcessingRecord {
+  id              String   @id @default(cuid())
+  organizationId  String
+  privacyImpactAssessmentId String?
+  name            String
+  purpose         String
+  lawfulBasis     String
+  dataCategoriesJson Json
+  dataSubjectsJson Json
+  recipientsJson  Json
+  retentionRule   String
+  securityMeasuresJson Json
+  systemLocationsJson Json
+  processorNamesJson Json
+  status          String   @default("ACTIVE")
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  privacyImpactAssessment PrivacyImpactAssessment? @relation(fields: [privacyImpactAssessmentId], references: [id])
+
+  @@index([organizationId, status])
+}
+
+model DataSubjectRequest {
+  id             String                   @id @default(cuid())
+  organizationId String
+  eventId        String?
+  personId       String?
+  requestType    DataSubjectRequestType
+  status         DataSubjectRequestStatus @default(RECEIVED)
+  subjectName    String
+  subjectContact String?
+  requestJson    Json?
+  responseJson   Json?
+  receivedAt     DateTime @default(now())
+  dueAt          DateTime?
+  verifiedAt     DateTime?
+  closedAt       DateTime?
+  createdById    String?
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+  person Person? @relation(fields: [personId], references: [id])
+
+  @@index([organizationId, status, receivedAt])
+  @@index([eventId, status])
+  @@index([personId])
+}
+
+model SecurityIncident {
+  id             String                   @id @default(cuid())
+  organizationId String
+  eventId        String?
+  severity       SecurityIncidentSeverity
+  status         SecurityIncidentStatus   @default(OPEN)
+  category       String
+  title          String
+  description    String
+  impactJson     Json?
+  containmentJson Json?
+  notificationDueAt DateTime?
+  discoveredAt   DateTime @default(now())
+  containedAt    DateTime?
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  reportedToNpcAt DateTime?
+  affectedSubjectsCount Int?
+  createdById    String?
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+
+  @@index([organizationId, status, severity])
+  @@index([eventId, status])
+}
+
+model BackupRun {
+  id             String          @id @default(cuid())
+  organizationId String
+  status         BackupRunStatus @default(STARTED)
+  backupType     String
+  backupReference String?
+  checksum       String?
+  sizeBytes      BigInt?
+  startedAt      DateTime @default(now())
+  completedAt    DateTime?
+  verifiedAt     DateTime?
+  retentionUntil DateTime?
+  notes          String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, status, startedAt])
+}
+
+model RateLimitBucket {
+  id             String   @id @default(cuid())
+  organizationId String?
+  keyHash        String
+  windowStartedAt DateTime
+  windowSeconds  Int
+  count          Int      @default(0)
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([keyHash, windowStartedAt])
+  @@index([expiresAt])
+}
+
+model ExportJob {
+  id             String          @id @default(cuid())
+  organizationId String
+  eventId        String?
+  requestedById  String?
+  kind           String
+  status         ExportJobStatus @default(REQUESTED)
+  filtersJson    Json?
+  fileName       String?
+  resultRef      String?
+  expiresAt      DateTime?
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+
+  @@index([organizationId, status, createdAt])
+  @@index([eventId, kind, createdAt])
+}
+
+model AuditLog {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  eventId               String?
+  actorType             ActorType
+  actorUserId           String?
+  actorParticipantSessionId String?
+  action                String
+  targetType            String
+  targetId              String
+  beforeJson            Json?
+  afterJson             Json?
+  metadataJson          Json?
+  reason                String?
+  requestId             String?
+  createdAt             DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event        Event?       @relation(fields: [eventId], references: [id])
+  actorUser    UserAccount? @relation(fields: [actorUserId], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([targetType, targetId])
+}
+
+model DomainEvent {
+  id            String   @id
+  eventId       String?
+  type          String
+  schemaVersion Int
+  aggregateType String
+  aggregateId   String
+  correlationId String
+  causationId   String?
+  payloadJson   Json
+  occurredAt    DateTime
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  event Event? @relation(fields: [eventId], references: [id])
+
+  @@index([processedAt, createdAt])
+  @@index([eventId, occurredAt])
+}
