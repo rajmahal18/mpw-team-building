@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ass
 
 function mediaResponse(data: Buffer | Uint8Array, mimeType: string, byteSize: number, kind: "IMAGE" | "VIDEO" | "AUDIO" | "FILE", cacheable: boolean) {
   const disposition = kind === "FILE" ? "attachment" : "inline";
-  return new NextResponse(data, {
+  return new NextResponse(new Uint8Array(data), {
     headers: {
       "Content-Type": mimeType,
       "Content-Length": String(byteSize),

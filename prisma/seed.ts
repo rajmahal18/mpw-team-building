@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { asInputJson } from "../src/lib/json";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword, hashSecret } from "../src/server/auth/password";
 import { DEFAULT_EVENT_CONFIG } from "../src/schemas/event";
@@ -87,7 +88,7 @@ async function main() {
     if (!templateVersion) {
       const latest = await prisma.activityTemplateVersion.aggregate({ where: { templateId: template.id }, _max: { version: true } });
       await prisma.activityTemplateVersion.updateMany({ where: { templateId: template.id, state: "PUBLISHED" }, data: { state: "SUPERSEDED" } });
-      templateVersion = await prisma.activityTemplateVersion.create({ data: { templateId: template.id, version: (latest._max.version ?? 0) + 1, state: "PUBLISHED", schemaVersion: preset.definition.schemaVersion, definitionJson: preset.definition, checksum: digest, publishedAt: new Date(), createdById: admin.id } });
+      templateVersion = await prisma.activityTemplateVersion.create({ data: { templateId: template.id, version: (latest._max.version ?? 0) + 1, state: "PUBLISHED", schemaVersion: preset.definition.schemaVersion, definitionJson: asInputJson(preset.definition), checksum: digest, publishedAt: new Date(), createdById: admin.id } });
     }
     if (template.currentVersionId !== templateVersion.id) template = await prisma.activityTemplate.update({ where: { id: template.id }, data: { currentVersionId: templateVersion.id } });
   }
@@ -113,7 +114,7 @@ async function main() {
       },
     };
     const version = await prisma.activityDefinitionVersion.create({
-      data: { activityInstanceId: activity.id, version: 1, state: "PUBLISHED", schemaVersion: 1, definitionJson: definition, checksum: checksum(definition), publishedAt: new Date(), createdById: admin.id },
+      data: { activityInstanceId: activity.id, version: 1, state: "PUBLISHED", schemaVersion: 1, definitionJson: asInputJson(definition), checksum: checksum(definition), publishedAt: new Date(), createdById: admin.id },
     });
     await prisma.activityInstance.update({ where: { id: activity.id }, data: { currentVersionId: version.id } });
   }

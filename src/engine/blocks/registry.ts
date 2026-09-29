@@ -11,7 +11,7 @@ function publicBase(block: ActivityBlock) {
   return block;
 }
 
-const stripValidation = (block: ActivityBlock) => {
+const stripValidation = (block: ActivityBlock): unknown => {
   if (block.type === "single_select" || block.type === "multi_select") {
     const { validation: _validation, ...safe } = block;
     return { ...safe, choices: block.choices.map(({ organizerNote: _organizerNote, ...choice }) => choice) };

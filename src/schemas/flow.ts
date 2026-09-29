@@ -19,7 +19,7 @@ export const RouteStepConfigSchema = z.object({
   requirementMatch: z.enum(["ALL", "ANY"]).default("ALL"),
   unlockRequirements: z.array(RouteUnlockRequirementSchema).default([]),
   notes: z.string().max(2000).optional(),
-}).default({});
+}).prefault({});
 export type RouteStepConfig = z.infer<typeof RouteStepConfigSchema>;
 
 export const StationConfigSchema = z.object({
@@ -30,7 +30,7 @@ export const StationConfigSchema = z.object({
   autoCallNext: z.boolean().default(true),
   allowWalkIn: z.boolean().default(false),
   fallbackStationId: z.string().min(1).optional(),
-}).default({});
+}).prefault({});
 export type StationConfig = z.infer<typeof StationConfigSchema>;
 
 export const RouteAssignmentStepSchema = z.object({

@@ -13,7 +13,7 @@ describe("Phase 10 productization contract", () => {
 
   it("keeps event navigation generic and visually separates Engine Lab", () => {
     const source = read("src/features/navigation/EventOrganizerNav.tsx");
-    expect(source).toContain('"Engine lab"');
+    expect(source).toContain('>Engine lab</Link>');
     expect(source).toContain("developer-tab");
     expect(source).not.toMatch(/202[0-9]|team\s*[1-9]/i);
   });
