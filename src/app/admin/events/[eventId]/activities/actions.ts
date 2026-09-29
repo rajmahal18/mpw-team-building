@@ -6,7 +6,6 @@ import { requireEventCapability } from "@/server/permissions/capabilities";
 import { ActivityDefinitionService } from "@/server/services/activity-definition-service";
 import { ActivityLibraryService } from "@/server/services/activity-library-service";
 import { createStarterDefinition } from "@/domain/activity/starter-definition";
-import { MachineKeySchema } from "@/schemas/shared";
 import { makeMachineKey } from "@/lib/machine-key";
 
 async function userOrLogin() { const user = await getCurrentUser(); if (!user) redirect("/login"); return user; }
@@ -29,7 +28,7 @@ export async function saveActivityToLibrary(formData: FormData) {
   const eventId = text(formData, "eventId");
   await requireEventCapability(user.id, eventId, "activities.manage");
   await new ActivityLibraryService().saveActivityAsTemplate({
-    activityInstanceId: text(formData, "activityInstanceId"), machineKey: MachineKeySchema.parse(text(formData, "machineKey")), name: text(formData, "name"), description: text(formData, "description") || undefined, categoryKey: text(formData, "categoryKey") || undefined, tags: text(formData, "tags").split(",").map((tag) => tag.trim()).filter(Boolean), actorUserId: user.id,
+    activityInstanceId: text(formData, "activityInstanceId"), machineKey: makeMachineKey(text(formData, "name"), "template"), name: text(formData, "name"), description: text(formData, "description") || undefined, categoryKey: text(formData, "categoryKey") || undefined, tags: text(formData, "tags").split(",").map((tag) => tag.trim()).filter(Boolean), actorUserId: user.id,
   });
   revalidatePath(`/admin/events/${eventId}/library`);
   revalidatePath(`/admin/events/${eventId}/activities`);
