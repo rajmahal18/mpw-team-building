@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { MachineKeySchema } from "@/schemas/shared";
+import { makeMachineKey } from "@/lib/machine-key";
 import { getCurrentUser } from "@/server/auth/session";
 import { requireEventCapability } from "@/server/permissions/capabilities";
 import { getPrisma } from "@/lib/prisma";
@@ -29,7 +30,7 @@ export async function addTemplateToEvent(formData: FormData) {
   await requireEventCapability(user.id, eventId, "activities.manage");
   const activity = await new ActivityLibraryService().instantiate({
     templateId: text(formData, "templateId"), eventId,
-    machineKey: MachineKeySchema.parse(text(formData, "machineKey")), title: text(formData, "title"), actorUserId: user.id,
+    machineKey: makeMachineKey(text(formData, "title"), "activity"), title: text(formData, "title"), actorUserId: user.id,
   });
   redirect(`/admin/events/${eventId}/activities/${activity.id}`);
 }

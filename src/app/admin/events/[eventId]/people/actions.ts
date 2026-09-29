@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { MachineKeySchema, TechnicalLimits } from "@/schemas/shared";
+import { makeMachineKey } from "@/lib/machine-key";
 import { getCurrentUser } from "@/server/auth/session";
 import { requireEventCapability } from "@/server/permissions/capabilities";
 import { EventService } from "@/server/services/event-service";
@@ -14,7 +15,8 @@ const refresh = (eventId: string) => revalidatePath(`/admin/events/${eventId}/pe
 
 export async function createTeam(formData: FormData) {
   const user = await userOrLogin(); const eventId = text(formData,"eventId"); await requireEventCapability(user.id,eventId,"teams.manage");
-  await new EventService().addTeam({ eventId, machineKey:MachineKeySchema.parse(text(formData,"machineKey")), name:text(formData,"name"), abbreviation:optional(formData,"abbreviation"), colorToken:optional(formData,"colorToken"), logoAssetId:optional(formData,"logoAssetId"), teamCode:optional(formData,"teamCode"), actorUserId:user.id }); refresh(eventId);
+  const name=text(formData,"name");
+  await new EventService().addTeam({ eventId, machineKey:makeMachineKey(name,"team"), name, abbreviation:optional(formData,"abbreviation"), colorToken:optional(formData,"colorToken"), logoAssetId:optional(formData,"logoAssetId"), teamCode:optional(formData,"teamCode"), actorUserId:user.id }); refresh(eventId);
 }
 export async function bulkCreateTeams(formData: FormData) {
   const user = await userOrLogin(); const eventId = text(formData,"eventId"); await requireEventCapability(user.id,eventId,"teams.manage");

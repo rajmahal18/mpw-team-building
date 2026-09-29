@@ -531,3 +531,135 @@ body:has(.leaderboard-projector) .leaderboard-projector { min-height:100vh; }
 }
 .setup-savebar-error { border-color:#d8aaaa; background:#fffafa; }
 .save-state-error { color:#9a1d1d; }
+
+/* ==========================================================================\n   Organizer coherence pass — anti-dumb UX\n   ========================================================================== */
+:root {
+  --page-max: 1120px;
+  --page-pad: clamp(16px, 3vw, 28px);
+  --section-gap: 18px;
+  --control-h: 44px;
+}
+main { max-width:var(--page-max); padding-left:var(--page-pad); padding-right:var(--page-pad); }
+main > .card:first-of-type { margin-top:0; }
+main > section + section, main > .list-stack, main > .library-grid { margin-top:var(--section-gap); }
+.page-heading { padding:6px 0 2px; }
+.page-heading > div:first-child { max-width:760px; }
+.page-heading h1 { margin-bottom:7px; }
+.page-heading .row { justify-content:flex-end; }
+.section-heading { margin-bottom:14px; }
+.section-heading > div:first-child { max-width:760px; }
+.section-heading h2 { line-height:1.15; }
+.card > h2:first-child, .card > h3:first-child { margin-top:0; }
+.card > p:last-child { margin-bottom:0; }
+
+/* Forms: one readable rhythm everywhere. */
+form.grid, .event-settings-form .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+form.stack { gap:15px; }
+label { align-content:start; line-height:1.35; }
+label .field-optional, .field-optional { margin-left:5px; color:var(--muted); font-size:11px; font-weight:600; }
+.form-hint { margin:8px 0 0; color:var(--muted); font-size:12px; }
+.form-actions { grid-column:1 / -1; justify-content:flex-end; padding-top:3px; }
+.form-actions > button:only-child { min-width:132px; }
+.check-grid { gap:10px 18px; }
+label.check { min-height:38px; padding:7px 0; font-weight:550; }
+fieldset { padding:14px; }
+legend { font-weight:700; color:var(--ink-soft); }
+textarea.builder-prompt { min-height:108px; }
+textarea:not(.code-editor):not(.builder-textarea) { font-family:inherit; font-size:14px; }
+
+/* Details are secondary by default, never the first visual demand. */
+details { border-radius:12px; }
+details > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:42px; color:var(--ink-soft); }
+details > summary::-webkit-details-marker { display:none; }
+details > summary::after { content:"+"; color:var(--muted); font-size:18px; font-weight:500; }
+details[open] > summary::after { content:"–"; }
+.secondary-details { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
+.secondary-details > summary { font-size:13px; font-weight:700; }
+.nested-details { border:1px solid var(--border); background:var(--panel-soft); padding:0 12px; }
+.advanced-settings-card > summary { padding:2px 0; }
+.advanced-settings-card > summary span { display:grid; gap:3px; }
+.advanced-settings-card > summary small { color:var(--muted); font-weight:500; }
+
+/* Navigation: primary tasks stay visible; secondary tools do not compete. */
+.event-shell-nav { max-width:var(--page-max); padding-left:var(--page-pad); padding-right:var(--page-pad); }
+.event-tabs { display:flex; align-items:flex-end; justify-content:space-between; gap:10px; overflow:visible; }
+.event-tab-scroll { display:flex; gap:2px; min-width:0; overflow-x:auto; scrollbar-width:none; }
+.event-tab-scroll::-webkit-scrollbar { display:none; }
+.event-more-menu { position:relative; flex:0 0 auto; }
+.event-more-menu > summary { min-height:38px; padding:9px 11px 10px; cursor:pointer; border-radius:8px 8px 0 0; color:var(--muted); font-size:12px; font-weight:700; }
+.event-more-menu > summary::after { content:"⌄"; margin-left:6px; font-size:12px; }
+.event-more-menu[open] > summary::after { content:"⌃"; }
+.event-more-menu > summary.active { color:var(--accent-strong); background:var(--panel); }
+.event-more-panel { position:absolute; right:0; top:calc(100% + 7px); z-index:30; width:210px; padding:6px; border:1px solid var(--border); border-radius:12px; background:var(--panel); box-shadow:var(--shadow-md); }
+.event-more-panel a { display:block; border-radius:8px; padding:10px 11px; background:transparent; }
+.event-more-panel a::after { display:none !important; }
+.event-more-panel a.active { background:var(--accent-soft); }
+
+/* Guided overview: task order is stronger than raw data. */
+.guided-build-flow { display:grid; gap:0; margin-top:8px; border:1px solid var(--border); border-radius:14px; overflow:hidden; background:var(--panel); }
+.guided-step { display:grid; grid-template-columns:34px minmax(0,1fr) auto; gap:14px; align-items:center; padding:15px 16px; border-bottom:1px solid var(--border); }
+.guided-step:last-child { border-bottom:0; }
+.guided-step > span:first-child { width:30px; height:30px; display:grid; place-items:center; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong); font-weight:800; font-size:12px; }
+.guided-step p { margin:3px 0 0; color:var(--muted); font-size:13px; }
+.advanced-workspace-links { margin-top:12px; }
+.advanced-workspace-links > summary { font-size:13px; }
+.success-notice { border-left-color:var(--accent); background:#f4faf7; }
+.lifecycle-actions { margin-top:14px; }
+
+/* Lists, tables and cards should scan quickly rather than look decorative. */
+.list-stack { gap:12px; }
+.list-stack > .card, .list-stack > section.card, .list-stack > article.card { margin:0; }
+.summary-grid { padding:12px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.stats-grid { grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); }
+.stat { min-height:78px; }
+.table-wrap { box-shadow:none; }
+th { position:sticky; top:0; z-index:1; }
+td, th { line-height:1.4; }
+
+/* Setup keeps one clear save action and de-emphasizes advanced sections. */
+.setup-main { padding-bottom:120px; }
+.setup-orientation { margin-bottom:14px; }
+.setup-primary-card { border-color:#bfd5cd; }
+.setup-next-card { background:#fbfcfb; }
+.setup-simple-checks { margin-top:12px; }
+.setup-savebar { position:sticky; bottom:14px; z-index:25; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:13px 15px; margin-top:18px; border:1px solid var(--border-strong); border-radius:13px; background:rgba(255,255,255,.96); box-shadow:0 12px 34px rgba(14,34,29,.14); backdrop-filter:blur(12px); }
+.setup-savebar > div:first-child { display:grid; gap:2px; }
+.setup-savebar > div:first-child span { color:var(--muted); font-size:12px; }
+.save-state { display:inline-flex; align-items:center; min-height:28px; padding:5px 9px; border-radius:999px; background:#edf1ef; color:var(--muted); font-size:11px; font-weight:750; }
+.save-state-dirty { background:#fff1d9; color:#845716; }
+.save-state-error { background:#fff0f0; color:var(--danger); }
+.save-state-saved { background:#e7f3ee; color:#11614f; }
+
+/* People and library choices should feel like choices, not configuration dumps. */
+.people-summary { display:grid; grid-template-columns:repeat(2,minmax(0,180px)); gap:10px; margin-bottom:14px; }
+.setup-choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.setup-choice-grid > details { border:1px solid var(--border); background:var(--panel-soft); padding:12px 14px; }
+.compact-empty { min-height:120px; margin-top:14px; }
+.library-card h2 { margin:10px 0 6px; }
+.library-card p { color:var(--muted); }
+.library-card details { margin-top:12px; border-top:1px solid var(--border); padding-top:8px; }
+
+/* Destructive actions never resemble the primary path. */
+.danger-zone { border-color:#ead0d0; background:#fffafa; }
+button.danger, .button.danger { background:#9a3131; }
+.danger-text { font-weight:700; }
+
+@media (max-width: 760px) {
+  main { padding-top:22px; }
+  .page-heading { align-items:flex-start; }
+  .page-heading > .button, .page-heading > .row { width:100%; }
+  .page-heading > .row { justify-content:flex-start; }
+  form.grid, .event-settings-form .grid, .setup-choice-grid { grid-template-columns:1fr; }
+  .form-actions { justify-content:stretch; }
+  .form-actions button { width:100%; }
+  .event-shell-nav { padding-top:12px; }
+  .event-shell-title { align-items:flex-start; }
+  .event-tabs { gap:4px; }
+  .event-more-panel { position:fixed; left:16px; right:16px; top:auto; width:auto; }
+  .guided-step { grid-template-columns:30px minmax(0,1fr); }
+  .guided-step .button { grid-column:2; width:max-content; }
+  .setup-savebar { left:10px; right:10px; bottom:10px; align-items:stretch; flex-direction:column; }
+  .setup-savebar .row { justify-content:space-between; }
+  .setup-savebar button { flex:1; }
+  .people-summary { grid-template-columns:repeat(2,1fr); }
+}

@@ -8,6 +8,7 @@ import { CheckpointCredentialService } from "@/server/services/checkpoint-creden
 import { StationConfigSchema } from "@/schemas/flow";
 import { getPrisma } from "@/lib/prisma";
 import type { StationState } from "@/generated/prisma/client";
+import { makeMachineKey } from "@/lib/machine-key";
 
 async function userOrLogin() { const user = await getCurrentUser(); if (!user) redirect("/login"); return user; }
 const eventPath = (eventId: string) => `/admin/events/${eventId}/stations`;
@@ -16,7 +17,8 @@ export async function createStation(formData: FormData) {
   const user = await userOrLogin(); const eventId = String(formData.get("eventId"));
   await requireEventCapability(user.id, eventId, "stations.manage");
   const rawCapacity = String(formData.get("capacity") || "").trim();
-  await new StationService().create({ eventId, machineKey: String(formData.get("machineKey")).trim(), name: String(formData.get("name")).trim(), capacity: rawCapacity ? Number(rawCapacity) : undefined, config: StationConfigSchema.parse({ locationLabel: String(formData.get("locationLabel") || "").trim() || undefined, instructions: String(formData.get("instructions") || "").trim() || undefined, participantMessage: String(formData.get("participantMessage") || "").trim() || undefined, queuePolicy: String(formData.get("queuePolicy") || "FIFO"), autoCallNext: formData.get("autoCallNext") === "on", allowWalkIn: formData.get("allowWalkIn") === "on" }), actorUserId: user.id });
+  const name = String(formData.get("name")).trim();
+  await new StationService().create({ eventId, machineKey: makeMachineKey(name, "station"), name, capacity: rawCapacity ? Number(rawCapacity) : undefined, config: StationConfigSchema.parse({ locationLabel: String(formData.get("locationLabel") || "").trim() || undefined, instructions: String(formData.get("instructions") || "").trim() || undefined, participantMessage: String(formData.get("participantMessage") || "").trim() || undefined, queuePolicy: String(formData.get("queuePolicy") || "FIFO"), autoCallNext: formData.get("autoCallNext") === "on", allowWalkIn: formData.get("allowWalkIn") === "on" }), actorUserId: user.id });
   revalidatePath(eventPath(eventId));
 }
 

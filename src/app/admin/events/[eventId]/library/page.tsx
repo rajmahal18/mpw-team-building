@@ -32,7 +32,7 @@ export default async function ActivityLibraryPage({ params, searchParams }: { pa
   const templates = allTemplates.filter((template) => (!category || template.categoryKey === category) && (!q || [template.name, template.description, template.categoryKey, ...template.tags].filter(Boolean).join(" ").toLowerCase().includes(q)));
 
   return <main>
-    <div className="page-heading"><div><h1>Activity library</h1><p className="muted">Reusable organization-level templates. Adding one to this event creates an independent copy that can be customized safely.</p></div><form action={installRecommendedLibrary}><input type="hidden" name="eventId" value={event.id}/><button>Install / update recommended MPW starters</button></form></div>
+    <div className="page-heading"><div><h1>Activity library</h1><p className="muted">Choose a starting point, add it to the event, then customize it if needed.</p></div><form action={installRecommendedLibrary}><input type="hidden" name="eventId" value={event.id}/><button>Add starter activities</button></form></div>
 
     <section className="card"><form method="get" className="row"><input name="q" defaultValue={filters.q ?? ""} placeholder="Search templates, tags, categories…"/><select name="category" defaultValue={category}><option value="">All categories</option>{categories.map((value)=><option key={value} value={value}>{value}</option>)}</select><button className="secondary">Filter</button></form></section>
 
@@ -44,8 +44,8 @@ export default async function ActivityLibraryPage({ params, searchParams }: { pa
         <div className="row"><span className="badge">{template.categoryKey || "uncategorized"}</span>{template.isSystem && <span className="badge">MPW starter</span>}</div>
         <h2>{template.name}</h2><p>{template.description || "No description."}</p>
         <div className="tag-row">{template.tags.map((tag)=><span className="tag" key={tag}>{tag}</span>)}</div>
-        <dl className="summary-grid"><div><dt>Participation</dt><dd>{summary.participation}</dd></div><div><dt>Blocks</dt><dd>{summary.blocks}</dd></div><div><dt>Timing</dt><dd>{summary.timing}</dd></div><div><dt>Verification</dt><dd>{summary.verification}</dd></div><div><dt>Scored</dt><dd>{summary.scored ? "Yes" : "No"}</dd></div><div><dt>Template</dt><dd>v{version.version}</dd></div></dl>
-        <details><summary>Add to this event</summary><form action={addTemplateToEvent} className="stack details-body"><input type="hidden" name="eventId" value={event.id}/><input type="hidden" name="templateId" value={template.id}/><label>Activity title<input name="title" defaultValue={template.name} required/></label><label>Event activity key<input name="machineKey" defaultValue={template.machineKey} pattern="[a-z0-9_-]+" required/></label><button>Add independent copy</button></form></details>
+        <dl className="summary-grid"><div><dt>Participation</dt><dd>{summary.participation}</dd></div><div><dt>Steps</dt><dd>{summary.blocks}</dd></div><div><dt>Timing</dt><dd>{summary.timing}</dd></div><div><dt>Check</dt><dd>{summary.verification.replaceAll("_", " ")}</dd></div><div><dt>Scored</dt><dd>{summary.scored ? "Yes" : "No"}</dd></div><div><dt>Scoring</dt><dd>{summary.scored ? "Included" : "Not included"}</dd></div></dl>
+        <details><summary>Add to this event</summary><form action={addTemplateToEvent} className="stack details-body"><input type="hidden" name="eventId" value={event.id}/><input type="hidden" name="templateId" value={template.id}/><label>Activity name<input name="title" defaultValue={template.name} required/></label><button>Add to event</button></form></details>
       </article>;
     })}</div>}
   </main>;

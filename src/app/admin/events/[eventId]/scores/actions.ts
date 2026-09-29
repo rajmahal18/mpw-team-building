@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth/session";
 import { requireEventCapability } from "@/server/permissions/capabilities";
 import { MachineKeySchema } from "@/schemas/shared";
+import { makeMachineKey } from "@/lib/machine-key";
 import { PlacementPointRuleSchema } from "@/schemas/results";
 import { ActivityRunService } from "@/server/services/activity-run-service";
 import { LeaderboardService } from "@/server/services/leaderboard-service";
@@ -25,7 +26,7 @@ export async function createLeaderboard(formData: FormData) {
   const selectionMode=text(formData,"selectionMode") as "ALL"|"BEST_N"|"DROP_LOWEST_N";
   const count=Number(text(formData,"selectionCount")||0);
   const selection=selectionMode==="ALL"?{mode:"ALL" as const}:selectionMode==="BEST_N"?{mode:"BEST_N" as const,count:Math.max(1,count)}:{mode:"DROP_LOWEST_N" as const,count:Math.max(0,count)};
-  await new LeaderboardService().create({ eventId, machineKey:MachineKeySchema.parse(text(formData,"machineKey")), name:text(formData,"name"), actorUserId:user.id, config:{ schemaVersion:1, eligibleKinds:["TEAM"], primaryDirection:text(formData,"primaryDirection") as "ASC"|"DESC", rankStyle:text(formData,"rankStyle") as "COMPETITION"|"DENSE", visibility:"LIVE", tieBreakers:[], sources:[{ id:MachineKeySchema.parse(text(formData,"sourceId")||"main"), label:text(formData,"sourceLabel")||"Main score", dimensionKey:text(formData,"dimensionKey"), scope:text(formData,"scope") as "ACTIVITY"|"EVENT", activityInstanceIds: formData.getAll("activityIds").map(String).filter(Boolean) || undefined, weight:Number(text(formData,"weight")||1), valueDirection:text(formData,"valueDirection") as "ASC"|"DESC", attemptMode:text(formData,"attemptMode") as "SUM"|"BEST"|"LATEST"|"AVERAGE", selection }] } });
+  await new LeaderboardService().create({ eventId, machineKey:text(formData,"machineKey") ? MachineKeySchema.parse(text(formData,"machineKey")) : makeMachineKey(text(formData,"name"),"leaderboard"), name:text(formData,"name"), actorUserId:user.id, config:{ schemaVersion:1, eligibleKinds:["TEAM"], primaryDirection:text(formData,"primaryDirection") as "ASC"|"DESC", rankStyle:text(formData,"rankStyle") as "COMPETITION"|"DENSE", visibility:"LIVE", tieBreakers:[], sources:[{ id:MachineKeySchema.parse(text(formData,"sourceId")||"main"), label:text(formData,"sourceLabel")||"Main score", dimensionKey:text(formData,"dimensionKey"), scope:text(formData,"scope") as "ACTIVITY"|"EVENT", activityInstanceIds: formData.getAll("activityIds").map(String).filter(Boolean) || undefined, weight:Number(text(formData,"weight")||1), valueDirection:text(formData,"valueDirection") as "ASC"|"DESC", attemptMode:text(formData,"attemptMode") as "SUM"|"BEST"|"LATEST"|"AVERAGE", selection }] } });
   revalidatePath(`/admin/events/${eventId}/scores`);
 }
 

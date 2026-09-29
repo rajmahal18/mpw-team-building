@@ -6,6 +6,7 @@ import { requireEventCapability } from "@/server/permissions/capabilities";
 import { RouteService } from "@/server/services/route-service";
 import { RouteStepConfigSchema } from "@/schemas/flow";
 import { getPrisma } from "@/lib/prisma";
+import { makeMachineKey } from "@/lib/machine-key";
 
 async function userOrLogin() { const user = await getCurrentUser(); if (!user) redirect("/login"); return user; }
 const pathFor = (eventId: string) => `/admin/events/${eventId}/routes`;
@@ -14,7 +15,8 @@ async function assertRoute(eventId: string, routePlanId: string) { const route =
 export async function createRoute(formData: FormData) {
   const user = await userOrLogin(); const eventId = String(formData.get("eventId"));
   await requireEventCapability(user.id, eventId, "routes.manage");
-  await new RouteService().create({ eventId, machineKey: String(formData.get("machineKey")).trim(), name: String(formData.get("name")).trim(), mode: String(formData.get("mode")), actorUserId: user.id });
+  const name = String(formData.get("name")).trim();
+  await new RouteService().create({ eventId, machineKey: makeMachineKey(name, "route"), name, mode: String(formData.get("mode")), actorUserId: user.id });
   revalidatePath(pathFor(eventId));
 }
 
